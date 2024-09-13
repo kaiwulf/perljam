@@ -7,8 +7,9 @@ use HTTP::Date qw(time2str);
 use File::MimeInfo;
 use Fcntl qw(:mode);
 use File::Spec;
+use Cwd 'abs_path';
 
-our $document_root = 'host-site/';
+our $document_root = 'host-site/www/';
 our $loop = IO::Async::Loop->new;
 our %status = (200 => "200: OK", 404 => "404: Not Found");
 
@@ -22,10 +23,14 @@ sub requests {
     # will process the types of requests here
 }
 
-
+sub debug_print {
+    my ($message) = @_;
+    print "$message\n";
+}
 
 sub headers {
     # will parse the header here and construct header sent here
+    my $status_code = $_[0];
     my $full_path = $_[1];
     
     my @stat = stat($full_path);
@@ -34,102 +39,95 @@ sub headers {
 
     my $content_type = get_mime_type($full_path);
 
-    my $header = "HTTP/1.1 $status{200} \r\n\r\n";
-    my $server_name = "Server: perljam\r\n";
-    my $modified = "Last-Modified: " . time2str($mtime) . "\r\n";
+    # my $modified = "Last-Modified: " . time2str($mtime) . "\r\n";
+
+    my $header = "HTTP/1.1 $status{$status_code} \r\n";
+    my $server_name = "Server: perljam/0.0.1 alpha\r\n";
+    my $date = "Date: ". time2str($mtime) . "\r\n";
+    my $cache_control = "Cache-Control: no-cache, must-revalidate\r\n";
+    my $expire = "Expires: Sat, 26 Jul 1997 05:00:00 GMT\r\n";
+    my $x_frame = "X-Frame-Options: DENY\r\n";
+    my $xxss_protect = "X-XSS-Protection: 1; mode=block\r\n";
+    my $strict_transport = "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
     my $type = "Content-Type: $content_type\r\n";
     my $content_len = "Content-Length: $size\r\n";
+    my $connection = "Connection: keep-alive\r\n";
+    my $blank = "\r\n";
     
-    my $response = $header . $server_name . $modified . $type . $content_len . "\r\n";
+    my $response = $header . $server_name . $date . $cache_control . $expire . $x_frame . $xxss_protect . $strict_transport . $type . $content_len . $connection . $blank;
     return $response;
 }
 
 sub serve_file {
-    my ($stream, $path) = @_;
+    my ($stream, $path, $cmd) = @_;
+    $path =~ s/^\/+//;
     my $full_path = File::Spec->catfile($document_root, $path);
-    $full_path =~ s/^\.\.//g;
+    # $full_path =~ s/^\.\.//g;
+    my $real_path = abs_path($full_path);
+    print "real path $real_path\n\n";
 
-    if (-f $full_path) {
+    if (-e $real_path) {
         
         my $content;
-        my $file_exists = 1;
-        my $fh;
-
-        unless (open $fh, '<:raw', $full_path) {
-            $file_exists = 0;
-        }
-        # open my $fh, '<:raw', $full_path or die "Can't open $full_path: $!";
-        if($file_exists) {
-            $content = do { local $/; <$fh> };
-        } else {
-
-        }
-        
+        open my $fh, '<:raw', $full_path or die "Can't open $full_path: $!";
+        $content = do { local $/; <$fh> };
         close $fh;
 
-        # my $response = "HTTP/1.1 200 OK\r\n" .
-        #                "Content-Type: $content_type\r\n" .
-        #                "Content-Length: $size\r\n" .
-        #                "Last-Modified: " . time2str($mtime) . "\r\n" .
-        #                "\r\n" .
-        #                $content;
-
-        my $response = headers($full_path) . $content;
-
+        # my $
+        my $response = headers(200, $full_path) . $content;
+        print "sending response:\n$response\n";
         $stream->write($response);
     } else {
-        my $response = "HTTP/1.1 404 Not Found\r\n" .
-                       "Content-Type: text/plain\r\n" .
-                       "Content-Length: 9\r\n" .
-                       "\r\n" .
-                       "Not Found";
+        my $response = headers(404, '') . "Not Found";
+        print "sending response:\n$response\n";
         $stream->write($response);
     }
 }
 
-my $listener = IO::Async::Listener->new(
-    on_stream => sub {
-        my ($self, $stream) = @_;
+eval {
+    my $listener = IO::Async::Listener->new(
+        on_stream => sub {
+            my ($self, $stream) = @_;
+            print "New connection received from " . $stream->read_handle->peerhost . "\n\n";
 
-        $stream->configure(
-            on_read => sub {
-                my ($self, $buffref, $eof) = @_;
+            $stream->configure(
+                on_read => sub {
+                    my ($self, $buffref, $eof) = @_;
 
-                while ($$buffref =~ s/^(.*\n)//) {
-                    my $line = $1;
-                    print "Received: $line";
-                    $stream->write("You said: $line");
-                }
+                    print "Received data: $$buffref\n\n";
 
-                return 0;
-            },
-        );
+                    # while ($$buffref =~ s/^GET (\/\S*) HTTP\/1\.[01]\r\n.*\r\n\r\n//s) {
+                    while ($$buffref =~ s/([A-Z]+) (\/\S*) HTTP\/1\.[01]\r\n.*\r\n\r\n//s) {
+                        my $cmd = $1;
+                        my $path = $2;
+                        $path = '/' if $path eq '';
+                        print "Serving file: $path\n\n";
+                        serve_file($stream, $path, $cmd);
+                        return 1;
+                    }
 
-        $loop->add($stream);
-    },
-);
+                    return 0;
+                },
+            );
 
-$loop->add($listener);
+            $loop->add($stream);
+        },
+    );
+    
+    $loop->add($listener);
 
-my $server_future = $listener->listen(
-    addr => {
-        family   => 'inet',
-        socktype => 'stream',
-        port     => 8080,
-    },
-)->then(
-    sub {
-        my ($socket) = @_;
-        print "Server running on port 8080\n";
+    my $server_future = $listener->listen(
+        addr => {
+            family   => 'inet',
+            socktype => 'stream',
+            port     => 8081,
+        },
+    )->get;
+    $loop->run;
+};
 
-        try_repeat {
-            $listener->accept
-        } while => sub { 1 };
-    },
-    sub {
-        my ($error) = @_;
-        die "Listen error: $error\n";
-    }
-);
+if ($@) {
+    debug_print("An error occurred: $@");
+}
 
-$loop->run($server_future);
+debug_print("Script execution completed.");
