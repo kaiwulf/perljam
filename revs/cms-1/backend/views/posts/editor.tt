@@ -1,0 +1,244 @@
+<% IF action == 'create' %>
+    <% title = 'New Post' %>
+<% ELSE %>
+    <% title = 'Edit Post: ' _ post.title %>
+<% END %>
+
+<form method="POST" 
+      action="<% IF action == 'create' %>/admin/posts<% ELSE %>/admin/posts/<% post.id %><% END %>"
+      id="post-form">
+    
+    <% IF action == 'update' %>
+    <input type="hidden" name="_method" value="PUT">
+    <% END %>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <a href="/admin/posts" style="color: #64748b; text-decoration: none;">
+            ← Back to Posts
+        </a>
+        <div style="display: flex; gap: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" name="published" value="1" 
+                       <% IF post.published %>checked<% END %>>
+                <span>Published</span>
+            </label>
+            <button type="submit" class="btn btn-primary">
+                <% IF action == 'create' %>Create Post<% ELSE %>Save Changes<% END %>
+            </button>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" class="form-control" 
+                   value="<% post.title %>" required
+                   placeholder="Enter post title...">
+        </div>
+        
+        <div class="form-group">
+            <label for="excerpt">Excerpt</label>
+            <textarea id="excerpt" name="excerpt" class="form-control" 
+                      style="min-height: 80px;"
+                      placeholder="Brief description for previews..."><% post.excerpt %></textarea>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-title">
+            Content
+            <span style="font-size: 0.8rem; font-weight: normal; color: #64748b;">
+                (Markdown supported)
+            </span>
+        </div>
+        
+        <div class="toolbar" style="margin-bottom: 10px; display: flex; gap: 5px; flex-wrap: wrap;">
+            <button type="button" onclick="insertMarkdown('**', '**')" title="Bold (Ctrl+B)">
+                <strong>B</strong>
+            </button>
+            <button type="button" onclick="insertMarkdown('*', '*')" title="Italic (Ctrl+I)">
+                <em>I</em>
+            </button>
+            <button type="button" onclick="insertMarkdown('# ')" title="Heading">
+                H
+            </button>
+            <button type="button" onclick="insertMarkdown('[', '](url)')" title="Link (Ctrl+K)">
+                🔗
+            </button>
+            <button type="button" onclick="insertMarkdown('![alt](', ')')" title="Image">
+                🖼️
+            </button>
+            <button type="button" onclick="insertMarkdown('```\n', '\n```')" title="Code Block">
+                &lt;/&gt;
+            </button>
+            <button type="button" onclick="insertMarkdown('> ')" title="Quote">
+                ❝
+            </button>
+            <button type="button" onclick="insertMarkdown('- ')" title="List">
+                •
+            </button>
+        </div>
+        
+        <div class="editor-container">
+            <div class="editor-pane">
+                <label style="font-size: 0.8rem; color: #64748b; margin-bottom: 5px; display: block;">
+                    Markdown
+                </label>
+                <textarea id="content_markdown" name="content_markdown" 
+                          class="form-control" 
+                          style="min-height: 500px; font-family: 'Fira Code', monospace; font-size: 14px;"
+                          placeholder="Write your content in Markdown..."><% post.content_markdown %></textarea>
+            </div>
+            
+            <div class="preview-pane">
+                <label style="font-size: 0.8rem; color: #64748b; margin-bottom: 5px; display: block;">
+                    Preview
+                </label>
+                <div id="preview-content" class="preview-content">
+                    <p style="color: #64748b;">Start typing to see preview...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<style>
+    .toolbar button {
+        padding: 6px 12px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    
+    .toolbar button:hover {
+        background: #e2e8f0;
+    }
+    
+    .preview-content {
+        padding: 20px;
+        background: #fafafa;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        min-height: 500px;
+        overflow-y: auto;
+    }
+    
+    .preview-content h1, .preview-content h2, .preview-content h3 {
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+    }
+    
+    .preview-content p {
+        margin-bottom: 1em;
+    }
+    
+    .preview-content pre {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+    }
+    
+    .preview-content code {
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Fira Code', monospace;
+    }
+    
+    .preview-content pre code {
+        background: none;
+        padding: 0;
+    }
+    
+    .preview-content blockquote {
+        border-left: 4px solid #2563eb;
+        padding-left: 20px;
+        margin: 1em 0;
+        color: #64748b;
+    }
+    
+    .preview-content img {
+        max-width: 100%;
+        height: auto;
+    }
+</style>
+
+<script>
+    const textarea = document.getElementById('content_markdown');
+    const preview = document.getElementById('preview-content');
+    const postId = '<% post.id || "new" %>';
+    
+    // Debounced preview update
+    let previewTimeout;
+    function schedulePreview() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(async () => {
+            const html = await updatePreview(textarea.value);
+            preview.innerHTML = html || '<p style="color: #64748b;">Nothing to preview</p>';
+        }, 300);
+    }
+    
+    textarea.addEventListener('input', () => {
+        schedulePreview();
+        scheduleAutoSave('post', postId, textarea.value);
+    });
+    
+    // Markdown insertion helper
+    function insertMarkdown(before, after = '') {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selected = textarea.value.substring(start, end);
+        const replacement = before + selected + after;
+        
+        textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+        
+        if (selected) {
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + replacement.length;
+        } else {
+            textarea.selectionStart = textarea.selectionEnd = start + before.length;
+        }
+        
+        textarea.focus();
+        schedulePreview();
+    }
+    
+    // Keyboard shortcuts
+    textarea.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key.toLowerCase()) {
+                case 'b':
+                    e.preventDefault();
+                    insertMarkdown('**', '**');
+                    break;
+                case 'i':
+                    e.preventDefault();
+                    insertMarkdown('*', '*');
+                    break;
+                case 'k':
+                    e.preventDefault();
+                    insertMarkdown('[', '](url)');
+                    break;
+                case 's':
+                    e.preventDefault();
+                    document.getElementById('post-form').submit();
+                    break;
+            }
+        }
+        
+        // Tab for indentation
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            insertMarkdown('    ');
+        }
+    });
+    
+    // Initial preview
+    if (textarea.value) {
+        schedulePreview();
+    }
+</script>

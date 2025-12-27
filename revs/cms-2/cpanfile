@@ -1,0 +1,27 @@
+# OpenCy CMS - Minimal Edition
+# Dependencies: NONE required (all core modules)
+#
+# The following are all CORE modules included with Perl 5.14+:
+#   - IO::Socket::INET (networking)
+#   - IO::Select (non-blocking I/O)
+#   - JSON::PP (JSON parsing, core since 5.14)
+#   - Digest::SHA (hashing, core since 5.9.3)
+#   - MIME::Base64 (encoding, core)
+#   - File::Spec, Cwd, POSIX (filesystem)
+#   - Socket (low-level networking)
+#   - Time::Local (time parsing)
+#
+# External requirements:
+#   - sqlite3 CLI tool (for database, usually pre-installed)
+#
+# Optional CPAN modules for better performance:
+#   DBI + DBD::SQLite  - faster database access
+#   IO::Async          - better async I/O (for high traffic)
+
+# Truly optional - only if you want them:
+recommends 'DBI', '>= 1.643';
+recommends 'DBD::SQLite', '>= 1.72';
+
+on 'test' => sub {
+    requires 'Test::More';  # Also core since 5.6.2
+};

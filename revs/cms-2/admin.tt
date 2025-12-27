@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><% title || 'Admin' %> - OpenCy CMS</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg: #f8fafc;
+            --sidebar-bg: #1e293b;
+            --sidebar-text: #e2e8f0;
+            --card-bg: #ffffff;
+            --text: #334155;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        
+        .layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            padding: 20px 0;
+        }
+        
+        .sidebar-logo {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .sidebar-logo h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .sidebar-logo span {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+        
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        
+        .sidebar-nav a:hover,
+        .sidebar-nav a.active {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-nav a.active {
+            border-left: 3px solid var(--primary);
+        }
+        
+        .sidebar-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-section-title {
+            padding: 0 20px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.5;
+            margin-bottom: 10px;
+        }
+        
+        /* Main content */
+        .main {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .content {
+            padding: 30px;
+            flex: 1;
+        }
+        
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        textarea.form-control {
+            min-height: 200px;
+            resize: vertical;
+            font-family: 'Fira Code', 'Monaco', monospace;
+        }
+        
+        /* Tables */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .table th {
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+        
+        .table tr:hover {
+            background: var(--bg);
+        }
+        
+        /* Editor */
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .editor-pane,
+        .preview-pane {
+            min-height: 400px;
+        }
+        
+        .preview-content {
+            padding: 20px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            min-height: 400px;
+        }
+        
+        /* Alerts */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .alert-success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        /* Status badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <h1>OpenCy</h1>
+                <span>Content Management</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/admin" class="<% 'active' IF request.path == '/admin' %>">
+                    📊 Dashboard
+                </a>
+                
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Content</div>
+                    <a href="/admin/posts" class="<% 'active' IF request.path.match('^/admin/posts') %>">
+                        📝 Blog Posts
+                    </a>
+                    <a href="/admin/pages" class="<% 'active' IF request.path.match('^/admin/pages') %>">
+                        📄 Pages
+                    </a>
+                    <a href="/admin/media" class="<% 'active' IF request.path.match('^/admin/media') %>">
+                        🖼️ Media
+                    </a>
+                </div>
+                
+                <% IF session.role == 'admin' %>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Admin</div>
+                    <a href="/admin/users" class="<% 'active' IF request.path.match('^/admin/users') %>">
+                        👥 Users
+                    </a>
+                    <a href="/admin/settings">
+                        ⚙️ Settings
+                    </a>
+                </div>
+                <% END %>
+            </nav>
+        </aside>
+        
+        <div class="main">
+            <header class="header">
+                <div>
+                    <h2><% title || 'Dashboard' %></h2>
+                </div>
+                <div class="header-user">
+                    <span>👤 <% session.username || 'Guest' %></span>
+                    <a href="/admin/logout" class="btn btn-secondary">Logout</a>
+                </div>
+            </header>
+            
+            <main class="content">
+                <% IF error %>
+                <div class="alert alert-error"><% error %></div>
+                <% END %>
+                
+                <% IF success %>
+                <div class="alert alert-success"><% success %></div>
+                <% END %>
+                
+                <% content %>
+            </main>
+        </div>
+    </div>
+    
+    <script>
+        // Live markdown preview helper
+        async function updatePreview(markdown) {
+            try {
+                const response = await fetch('/admin/api/preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'markdown=' + encodeURIComponent(markdown)
+                });
+                const data = await response.json();
+                return data.html;
+            } catch (e) {
+                console.error('Preview error:', e);
+                return '<p>Preview unavailable</p>';
+            }
+        }
+        
+        // Auto-save helper
+        let autoSaveTimeout;
+        function scheduleAutoSave(type, id, content) {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(async () => {
+                try {
+                    await fetch(`/admin/api/drafts/${type}/${id}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'content=' + encodeURIComponent(content)
+                    });
+                    console.log('Auto-saved');
+                } catch (e) {
+                    console.error('Auto-save failed:', e);
+                }
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
